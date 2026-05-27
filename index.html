@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AvianAI - Duck Egg Incubation & Candling Monitor</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            amber: {
+              450: '#f59e0b',
+              550: '#d97706',
+            },
+            incubator: {
+              dark: '#0a0f1d',
+              card: '#141d33',
+              glow: '#ff8800'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- FontAwesome for Premium Agri-Tech Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- TensorFlow.js Core & COCO-SSD Model for Live Object Tracking -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
+
+  <style>
+    /* Custom Scrollbar for Sci-Fi Diagnostic Terminal Feel */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    
+    /* Pulser effect for active alerts and bio-signals */
+    @keyframes pulse-glow {
+      0%, 100% { filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.6)); }
+      50% { filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.95)); }
+    }
+    .pulsing-amber {
+      animation: pulse-glow 1.8s infinite;
+    }
+  </style>
+</head>
+<body class="bg-incubator-dark text-slate-100 min-h-screen font-sans antialiased overflow-x-hidden">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 sticky top-0 z-50 shadow-lg">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="bg-gradient-to-tr from-amber-500 to-yellow-400 p-2.5 rounded-xl text-slate-950 shadow-lg shadow-amber-500/20">
+          <i class="fa-solid fa-egg text-2xl animate-bounce"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-200 to-emerald-400">
+            AvianAI Pro
+          </h1>
+          <p class="text-xs text-slate-400 font-mono">DUCK INCUBATION & AI CANDLING STATION v3.2</p>
+        </div>
+      </div>
+
+      <!-- Center Segment: Dynamic Timeline Slider representing 28 days of incubation -->
+      <div class="flex-1 max-w-lg w-full px-4">
+        <div class="bg-slate-950/80 rounded-xl p-2.5 border border-slate-800 flex items-center gap-3">
+          <span class="text-xs font-mono font-bold text-amber-500 whitespace-nowrap"><i class="fa-solid fa-calendar-days mr-1.5"></i>INCUBATION DAY:</span>
+          <input type="range" id="day-slider" min="1" max="28" value="12" class="w-full accent-amber-500 cursor-pointer h-2 bg-slate-800 rounded-lg appearance-none">
+          <span id="day-badge" class="bg-amber-500/20 text-amber-400 text-sm font-mono font-bold px-3 py-1 rounded border border-amber-500/30 shadow-sm">DAY 12</span>
+        </div>
+      </div>
+
+      <!-- Right Segment: Quick Telemetry Dashboard Status -->
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 px-3 py-1.5 bg-emerald-950/50 border border-emerald-800/60 rounded-lg">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span class="text-xs font-mono text-emerald-400 tracking-wider">TELEMETRY LINK: ONLINE</span>
+        </div>
+        <div class="text-xs text-slate-400 font-mono text-right hidden sm:block">
+          <p id="current-timestamp">2026-05-27 17:35:00</p>
+          <p class="text-[10px] text-amber-500">SYSTEM HEALTH: EXCELLENT</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid Dashboard -->
+  <main class="max-w-7xl mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- Left Column: Live Video/Canvas Simulator & AI Controls (7/12 width) -->
+    <section class="lg:col-span-7 flex flex-col gap-6">
+      
+      <!-- Video / Canvas Feed Window -->
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl relative flex flex-col">
+        
+        <!-- Camera Toolbar Header -->
+        <div class="bg-slate-900 px-4 py-3 flex justify-between items-center border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span>
+            <h2 id="feed-title" class="font-mono text-xs font-bold uppercase tracking-widest text-slate-300">
+              LIVE CAMERA FEED: SCANNING ZONE A
+            </h2>
+          </div>
+          <div class="flex gap-2">
+            <span id="fps-counter" class="text-[10px] font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+              FPS: 0
+            </span>
+            <span id="ai-active-badge" class="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 uppercase tracking-wider">
+              AI DETECTOR: READY
+            </span>
+          </div>
+        </div>
+
+        <!-- Render Target Box (Video + Canvas Overlays) -->
+        <div class="relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden group select-none">
+          
+          <!-- TF.js Hidden Video Element -->
+          <video id="webcam-elem" class="absolute top-0 left-0 w-full h-full object-cover hidden pointer-events-none" autoplay playsinline muted></video>
+          
+          <!-- Synthetic Camera Background / Image Fallback Renderer Canvas -->
+          <canvas id="feed-canvas" class="w-full h-full object-cover block cursor-crosshair"></canvas>
+          
+          <!-- Static Scanline Grid Effect Overlay -->
+          <div class="absolute inset-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,_rgba(0,0,0,0.25)_50%),_linear-gradient(90deg,_rgba(255,0,0,0.06),_rgba(0,255,0,0.02),_rgba(0,0,255,0.06))] bg-[size:100%_4px,_3px_100%]"></div>
+          
+          <!-- Interactive Instructions Overlay -->
+          <div class="absolute top-3 left-3 bg-slate-950/85 backdrop-blur border border-slate-800 text-[10px] font-mono px-3 py-1.5 rounded-lg text-slate-300 pointer-events-none shadow-md">
+            <i class="fa-solid fa-circle-info text-amber-500 mr-1.5"></i>Click canvas to place a new Duck Egg
+          </div>
+
+          <!-- Candling Backlight Visual Flare (appears when candling filter is engaged) -->
+          <div id="candling-flare" class="absolute inset-0 pointer-events-none opacity-0 transition-opacity duration-300 bg-[radial-gradient(circle_at_center,rgba(251,146,60,0.3)_0%,rgba(0,0,0,0.85)_80%)]"></div>
+          
+          <!-- TensorFlow Loading overlay -->
+          <div id="tf-loader" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center gap-3">
+            <div class="relative">
+              <div class="w-12 h-12 rounded-full border-4 border-slate-800 border-t-amber-500 animate-spin"></div>
+              <i class="fa-solid fa-microchip absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-sm text-amber-500"></i>
+            </div>
+            <p class="font-mono text-xs text-slate-400">LOADING TENSORFLOW.JS & COCO-SSD ENGINE...</p>
+          </div>
+        </div>
+
+        <!-- Camera Control Bar -->
+        <div class="p-4 bg-slate-900 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          
+          <!-- Left Actions: Inputs/Feeds Toggle -->
+          <div class="flex flex-col gap-2">
+            <label class="text-[10px] font-mono uppercase tracking-widest text-slate-400">Stream Source Selection</label>
+            <div class="flex gap-2">
+              <button id="btn-webcam" class="flex-1 bg-slate-850 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs py-2 px-3 rounded-lg transition font-mono flex items-center justify-center gap-2">
+                <i class="fa-solid fa-camera"></i> Connect USB Cam
+              </button>
+              <button id="btn-demo" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs py-2 px-3 rounded-lg font-mono font-bold transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-robot"></i> Run Demo Sim
+              </button>
+            </div>
+            <div class="relative mt-1">
+              <input type="text" id="stream-url-input" placeholder="rtsp://ip-camera-address:554/stream1" class="w-full bg-slate-950 border border-slate-800 text-xs py-2 px-3 pr-24 rounded-lg font-mono text-slate-300 focus:outline-none focus:border-amber-500 transition">
+              <button id="btn-load-stream" class="absolute right-1 top-1 bottom-1 bg-slate-800 hover:bg-slate-700 text-[10px] text-amber-400 font-mono px-3 rounded-md transition border border-slate-700">
+                CONNECT
+              </button>
+            </div>
+          </div>
+
+          <!-- Right Actions: Advanced Optics & Model Selectors -->
+          <div class="flex flex-col gap-2">
+            <label class="text-[10px] font-mono uppercase tracking-widest text-slate-400">Optics & Detection Intelligence</label>
+            
+            <div class="flex gap-2">
+              <!-- AI Core Mode Selector -->
+              <div class="flex-1 relative">
+                <select id="ai-mode-select" class="w-full bg-slate-950 border border-slate-800 text-xs py-2 px-3 rounded-lg font-mono text-slate-300 focus:outline-none focus:border-amber-500 appearance-none cursor-pointer">
+                  <option value="sim">Simulated Diagnostic Model</option>
+                  <option value="coco">COCO-SSD Neural Network</option>
+                </select>
+                <i class="fa-solid fa-chevron-down absolute right-3 top-3 text-[10px] text-slate-400 pointer-events-none"></i>
+              </div>
+
+              <!-- High Contrast Candling Filter Toggle -->
+              <button id="btn-candling-filter" class="flex-1 bg-slate-950 border border-slate-800 text-amber-500 hover:text-amber-400 text-xs py-2 px-3 rounded-lg font-mono flex items-center justify-center gap-2 shadow-inner transition hover:border-amber-500/40">
+                <i class="fa-regular fa-lightbulb text-lg"></i>
+                <span class="font-bold">CANDLE FILTER</span>
+              </button>
+            </div>
+
+            <!-- Candling Specific Controls (sliders) -->
+            <div id="candling-intensity-box" class="grid grid-cols-2 gap-2 opacity-40 pointer-events-none transition-opacity duration-300">
+              <div class="flex flex-col bg-slate-950 p-1.5 rounded-md border border-slate-800">
+                <span class="text-[9px] font-mono text-slate-400">Candle Backlight: <span id="val-backlight">85%</span></span>
+                <input type="range" id="opt-backlight" min="20" max="100" value="85" class="w-full accent-amber-500 h-1 mt-1 bg-slate-800 rounded">
+              </div>
+              <div class="flex flex-col bg-slate-950 p-1.5 rounded-md border border-slate-800">
+                <span class="text-[9px] font-mono text-slate-400">Contrast Boost: <span id="val-contrast">2.2x</span></span>
+                <input type="range" id="opt-contrast" min="10" max="40" value="22" class="w-full accent-amber-500 h-1 mt-1 bg-slate-800 rounded">
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Control System Panel & Environmental Telemetry Tuning -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
+        <h3 class="text-sm font-bold font-mono tracking-widest text-slate-300 border-b border-slate-800 pb-3 mb-4 uppercase flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-amber-500"></i> Environmental Control Simulator
+        </h3>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <!-- Incubator Temperature Slider Dial -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs font-mono text-slate-400 font-bold uppercase"><i class="fa-solid fa-temperature-three-quarters text-amber-500 mr-1.5"></i>Chamber Temp</span>
+              <span id="temp-display" class="text-sm font-mono text-amber-400 font-bold">37.6 °C</span>
+            </div>
+            <input type="range" id="control-temp" min="350" max="400" value="376" class="w-full accent-amber-500 cursor-pointer h-2 bg-slate-800 rounded-lg appearance-none">
+            <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
+              <span>35.0°C</span>
+              <span class="text-emerald-500">Target Range: 37.5 - 37.8°C</span>
+              <span>40.0°C</span>
+            </div>
+          </div>
+
+          <!-- Incubator Humidity Slider Dial -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-xs font-mono text-slate-400 font-bold uppercase"><i class="fa-solid fa-droplet text-blue-400 mr-1.5"></i>Chamber Humidity</span>
+              <span id="hum-display" class="text-sm font-mono text-blue-400 font-bold">56.0 % RH</span>
+            </div>
+            <input type="range" id="control-hum" min="400" max="800" value="560" class="w-full accent-blue-500 cursor-pointer h-2 bg-slate-800 rounded-lg appearance-none">
+            <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
+              <span>40% RH</span>
+              <span class="text-emerald-500">Target Range: 55 - 70%</span>
+              <span>80% RH</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-3">
+          <span class="text-[10px] font-mono uppercase text-slate-400 self-center">Active Relays:</span>
+          <div class="flex items-center gap-1.5 px-3 py-1 bg-slate-950 rounded-full border border-slate-800 text-[10px] font-mono">
+            <span id="relay-heater" class="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block animate-pulse"></span> Heater Element
+          </div>
+          <div class="flex items-center gap-1.5 px-3 py-1 bg-slate-950 rounded-full border border-slate-800 text-[10px] font-mono">
+            <span id="relay-fan" class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-spin"></span> Ventilation Fan
+          </div>
+          <div id="vent-alarm" class="hidden items-center gap-1.5 px-3 py-1 bg-red-950/50 border border-red-800 rounded-full text-[10px] font-mono text-red-400 font-bold animate-pulse">
+            <i class="fa-solid fa-triangle-exclamation"></i> OVERHEAT SAFE SHUTDOWN ACTIVE
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Interactive KPI Cards, Egg Live Inventory, Inspector Panel (5/12 width) -->
+    <section class="lg:col-span-5 flex flex-col gap-6">
+      
+      <!-- Summarized KPI Cards -->
+      <div class="grid grid-cols-2 gap-4">
+        
+        <!-- Total Eggs Monitored -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3">
+          <div class="p-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-lg text-lg">
+            <i class="fa-solid fa-boxes-stacked"></i>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Total Eggs</p>
+            <p id="kpi-total-eggs" class="text-xl font-mono font-bold text-slate-100">5</p>
+          </div>
+        </div>
+
+        <!-- Fertility Rate Estimate -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3">
+          <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg text-lg">
+            <i class="fa-solid fa-heart-pulse"></i>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Fertility Rate</p>
+            <p id="kpi-fertility-rate" class="text-xl font-mono font-bold text-emerald-400">80.0%</p>
+          </div>
+        </div>
+
+        <!-- Hatching Progress Indicator -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3">
+          <div class="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg text-lg">
+            <i class="fa-solid fa-egg"></i>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Hatching Progress</p>
+            <p id="kpi-hatching-progress" class="text-xl font-mono font-bold text-amber-400">20.0%</p>
+          </div>
+        </div>
+
+        <!-- Alerts / Warning Count -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3">
+          <div id="kpi-warning-box" class="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-lg">
+            <i class="fa-solid fa-circle-exclamation"></i>
+          </div>
+          <div>
+            <p class="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Active Alerts</p>
+            <p id="kpi-alerts-count" class="text-xl font-mono font-bold text-red-500">0</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Selected Egg Candling Inspector & Diagnostic Readout -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
+        <h3 class="text-sm font-bold font-mono tracking-widest text-slate-300 border-b border-slate-800 pb-3 mb-4 uppercase flex justify-between items-center">
+          <span><i class="fa-solid fa-magnifying-glass-chart text-amber-500 mr-1"></i> AI Egg Candling Inspector</span>
+          <span class="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 uppercase" id="selected-egg-badge">No Egg Selected</span>
+        </h3>
+
+        <!-- Interactive Control Box for Selected Egg -->
+        <div id="inspector-content" class="space-y-4">
+          <p class="text-xs text-slate-400 font-mono text-center py-6">Select an egg on the live monitor canvas or from the inventory list below to review full diagnostic analysis and biological telemetry.</p>
+        </div>
+      </div>
+
+      <!-- Live Egg Diagnostics Inventory Grid/List -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex-1 flex flex-col">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+          <h3 class="text-sm font-bold font-mono tracking-widest text-slate-300 uppercase flex items-center gap-2">
+            <i class="fa-solid fa-list text-amber-500"></i> Egg Inventory Logs
+          </h3>
+          <span class="text-[10px] font-mono text-slate-400 font-bold bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+            TOTAL: <span id="inventory-count">5</span>
+          </span>
+        </div>
+
+        <!-- Inventory List Container -->
+        <div class="overflow-y-auto max-h-[300px] flex-1 space-y-2 pr-1" id="egg-inventory-list">
+          <!-- Dynamically populated rows -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Bottom Block: Analytics Charts and System Live Console Terminal Logs -->
+  <footer class="max-w-7xl mx-auto px-4 lg:px-6 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- Left Bottom: Chart JS Analytics (8/12 width) -->
+    <div class="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4 mb-6">
+        <div>
+          <h3 class="text-sm font-bold font-mono tracking-widest text-slate-300 uppercase flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-emerald-500"></i> Historical Incubation & Candling Analytics
+          </h3>
+          <p class="text-xs text-slate-400">Continuous telemetry charts covering the target 28-day duck embryo gestation.</p>
+        </div>
+        <div class="flex gap-2">
+          <button id="btn-export-csv" class="bg-emerald-600 hover:bg-emerald-700 text-slate-950 hover:text-slate-100 font-mono text-xs font-bold py-1.5 px-3 rounded-lg transition flex items-center gap-2">
+            <i class="fa-solid fa-file-csv text-base"></i> EXPORT REPORT (.CSV)
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+        <!-- Incubation Environment Line Chart -->
+        <div class="md:col-span-8 bg-slate-950 p-4 rounded-xl border border-slate-800 h-[260px] relative">
+          <canvas id="incubation-line-chart"></canvas>
+        </div>
+        
+        <!-- Egg Status Distribution Pie Chart -->
+        <div class="md:col-span-4 bg-slate-950 p-4 rounded-xl border border-slate-800 h-[260px] relative">
+          <canvas id="egg-status-pie-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Bottom: real-time Alert & Notification feed (4/12 width) -->
+    <div class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col h-[350px]">
+      <div class="border-b border-slate-800 pb-3 mb-4 flex justify-between items-center">
+        <h3 class="text-sm font-bold font-mono tracking-widest text-slate-300 uppercase flex items-center gap-2">
+          <i class="fa-solid fa-terminal text-red-500 animate-pulse"></i> Real-time System Terminal
+        </h3>
+        <button id="btn-clear-logs" class="text-[10px] font-mono text-slate-400 hover:text-slate-100 transition flex items-center gap-1 bg-slate-950 hover:bg-slate-800 px-2 py-0.5 rounded border border-slate-800">
+          <i class="fa-solid fa-trash-can"></i> CLEAR
+        </button>
+      </div>
+
+      <!-- Scroller Alert Console Terminal -->
+      <div id="diagnostic-terminal" class="flex-1 overflow-y-auto font-mono text-xs text-slate-300 space-y-2.5 bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-inner">
+        <!-- Dynamically injected real-time diagnostic reports and alerts -->
+      </div>
+    </div>
+
+  </footer>
+
+  <!-- Complete Javascript Orchestration Block -->
+  <script>
+    // System Global Variables and Configuration
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'duck-incubation-monitor';
+    
+    // Core state management
+    let state = {
+      selectedDay: 12,
+      currentTemperature: 37.6,
+      currentHumidity: 56.0,
+      targetTemperature: 37.6,
+      targetHumidity: 55.0,
+      candlingFilterActive: false,
+      candlingBacklight: 85,
+      candlingContrast: 2.2,
+      selectedEggId: null,
+      aiMode: 'sim', // 'sim' for customized biology dashboard | 'coco' for real tf.js neural net
+      streamSource: 'simulation', // 'simulation' | 'webcam'
+      activeAlerts: [],
+      fps: 0,
+      systemRelays: {
+        heater: true,
+        fan: true,
+        overheatVent: false
+      }
+    };
+
+    // Egg database tracking array
+    let eggsList = [
+      { id: "001", x: 120, y: 150, width: 85, height: 110, status: "fertile", confidence: 97.4, lastBPM: 142, lastMovement: "Steady Pulse", dayDetected: 4, comments: "Healthy vascular webbing visible." },
+      { id: "002", x: 260, y: 130, width: 90, height: 115, status: "fertile", confidence: 95.8, lastBPM: 138, lastMovement: "Active Embryo", dayDetected: 5, comments: "Chamber air cell expanding appropriately." },
+      { id: "003", x: 390, y: 170, width: 82, height: 108, status: "infertile", confidence: 99.1, lastBPM: 0, lastMovement: "None", dayDetected: 7, comments: "Yolk shadow clearly defined, no vessels." },
+      { id: "004", x: 170, y: 280, width: 88, height: 112, status: "hatching", confidence: 92.5, lastBPM: 155, lastMovement: "Pip Crack Active", dayDetected: 26, comments: "Internal pipping initiated. Active star-crack." },
+      { id: "005", x: 330, y: 290, width: 86, height: 110, status: "dead-in-shell", confidence: 88.7, lastBPM: 0, lastMovement: "None", dayDetected: 9, comments: "Decomposing dark mass. Distinct blood ring formed." }
+    ];
+
+    // Reference definitions for incubation day guidelines (28 Days)
+    const DayTargetRanges = {
+      early: { start: 1, end: 24, tempMin: 37.5, tempMax: 37.8, humMin: 50, humMax: 58 },
+      lockdown: { start: 25, end: 28, tempMin: 37.1, tempMax: 37.4, humMin: 65, humMax: 72 }
+    };
+
+    // DOM Elements
+    const daySlider = document.getElementById('day-slider');
+    const dayBadge = document.getElementById('day-badge');
+    const currentTimestampElem = document.getElementById('current-timestamp');
+    const feedCanvas = document.getElementById('feed-canvas');
+    const feedTitle = document.getElementById('feed-title');
+    const fpsCounter = document.getElementById('fps-counter');
+    const aiActiveBadge = document.getElementById('ai-active-badge');
+    const webcamElem = document.getElementById('webcam-elem');
+    const btnWebcam = document.getElementById('btn-webcam');
+    const btnDemo = document.getElementById('btn-demo');
+    const streamUrlInput = document.getElementById('stream-url-input');
+    const btnLoadStream = document.getElementById('btn-load-stream');
+    const aiModeSelect = document.getElementById('ai-mode-select');
+    const btnCandlingFilter = document.getElementById('btn-candling-filter');
+    const candlingIntensityBox = document.getElementById('candling-intensity-box');
+    const optBacklight = document.getElementById('opt-backlight');
+    const optContrast = document.getElementById('opt-contrast');
+    const valBacklight = document.getElementById('val-backlight');
+    const valContrast = document.getElementById('val-contrast');
+    const candlingFlare = document.getElementById('candling-flare');
+    const tfLoader = document.getElementById('tf-loader');
+    
+    // Telemetry DOM
+    const tempDisplay = document.getElementById('temp-display');
+    const humDisplay = document.getElementById('hum-display');
+    const controlTemp = document.getElementById('control-temp');
+    const controlHum = document.getElementById('control-hum');
+    const relayHeater = document.getElementById('relay-heater');
+    const relayFan = document.getElementById('relay-fan');
+    const ventAlarm = document.getElementById('vent-alarm');
+
+    // KPI DOM
+    const kpiTotalEggs = document.getElementById('kpi-total-eggs');
+    const kpiFertilityRate = document.getElementById('kpi-fertility-rate');
+    const kpiHatchingProgress = document.getElementById('kpi-hatching-progress');
+    const kpiAlertsCount = document.getElementById('kpi-alerts-count');
+    const kpiWarningBox = document.getElementById('kpi-warning-box');
+
+    // Panels DOM
+    const inspectorContent = document.getElementById('inspector-content');
+    const selectedEggBadge = document.getElementById('selected-egg-badge');
+    const eggInventoryList = document.getElementById('egg-inventory-list');
+    const inventoryCount = document.getElementById('inventory-count');
+    const diagnosticTerminal = document.getElementById('diagnostic-terminal');
+    const btnClearLogs = document.getElementById('btn-clear-logs');
+    const btnExportCsv = document.getElementById('btn-export-csv');
+
+    // Canvas drawing context
+    const ctx = feedCanvas.getContext('2d');
+    let canvasWidth = 640;
+    let canvasHeight = 480;
+    
+    // TensorFlow configuration
+    let cocoModel = null;
+    let cocoLoaded = false;
+    let localStream = null;
+    let frameTimes = [];
+    let isWebcamRunning = false;
+
+    // Chart.js instances
+    let incubationLineChart = null;
+    let eggStatusPieChart = null;
+
+    // Simulation variables for canvas movement and background
+    let chamberRotationAngle = 0;
+    let fanAngle = 0;
+    let heatWavesPhase = 0;
+    let dragTargetIndex = -1;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    // Initialize Application
+    window.addEventListener('load', async () => {
+      // 1. Force Responsive Canvas coordinates sizing
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // 2. Load TF.js model asynchronously in the background
+      initializeTensorflow();
+
+      // 3. Initialize charts
+      initializeCharts();
+
+      // 4. Update the current real-world datetime loop
+      setInterval(updateClock, 1000);
+
+      // 5. Connect UI event listeners
+      setupEventListeners();
+
+      // 6. Build the initial Egg lists and logs
+      updateEggKPIs();
+      populateEggInventory();
+      addLog("System boot initialized", "success", "SYS");
+      addLog("Incubator Telemetry Online. Standard 28-day schedule targeted.", "info", "TELEMETRY");
+      addLog("Artificial Intelligence simulator tracking active.", "info", "AI-DET");
+      
+      // 7. Start graphics drawing loop
+      requestAnimationFrame(runSystemRenderLoop);
+    });
+
+    // Handle high density displays and canvas aspect scaling
+    function resizeCanvas() {
+      // Fit to video container layout constraints
+      const rect = feedCanvas.parentElement.getBoundingClientRect();
+      feedCanvas.width = rect.width;
+      // enforce 16:9 ratio
+      feedCanvas.height = rect.width * (9/16);
+      canvasWidth = feedCanvas.width;
+      canvasHeight = feedCanvas.height;
+    }
+
+    // Modern continuous clock tracker
+    function updateClock() {
+      const now = new Date();
+      const formatStr = now.toISOString().replace('T', ' ').substring(0, 19);
+      currentTimestampElem.textContent = formatStr;
+    }
+
+    // Setup Interaction Listeners
+    function setupEventListeners() {
+      // Day Selection Slider
+      daySlider.addEventListener('input', (e) => {
+        state.selectedDay = parseInt(e.target.value);
+        dayBadge.textContent = `DAY ${state.selectedDay}`;
+        
+        // Dynamically adjust parameters based on target incubation day stages
+        updateIncubationParametersForDay(state.selectedDay);
+        // Highlight active day in line chart
+        updateLineChartSelection();
+      });
+
+      // Ambient Temperature controller slider
+      controlTemp.addEventListener('input', (e) => {
+        state.currentTemperature = parseFloat(e.target.value) / 10;
+        tempDisplay.textContent = `${state.currentTemperature.toFixed(1)} °C`;
+        checkTelemetryThresholds();
+      });
+
+      // Ambient Humidity controller slider
+      controlHum.addEventListener('input', (e) => {
+        state.currentHumidity = parseFloat(e.target.value) / 10;
+        humDisplay.textContent = `${state.currentHumidity.toFixed(1)} % RH`;
+        checkTelemetryThresholds();
+      });
+
+      // Stream selection - connect webcam
+      btnWebcam.addEventListener('click', async () => {
+        await startWebcam();
+      });
+
+      // Stream selection - simulation mode reset
+      btnDemo.addEventListener('click', () => {
+        stopWebcam();
+        state.streamSource = 'simulation';
+        feedTitle.textContent = "LIVE CAMERA FEED: SCANNING ZONE A (DEMO SIM)";
+        addLog("Stream input shifted to simulated digital incubator chamber.", "info", "SYS");
+      });
+
+      // Connect RTSP / HLS simulator URL
+      btnLoadStream.addEventListener('click', () => {
+        const url = streamUrlInput.value.trim();
+        if (url) {
+          stopWebcam();
+          state.streamSource = 'simulation';
+          feedTitle.textContent = `IP STREAM ACTIVE: ${url}`;
+          addLog(`Routing IP CCTV Stream from: ${url}. (Demo simulated visual fallback engaged).`, "success", "SYS");
+        }
+      });
+
+      // Model Select Option
+      aiModeSelect.addEventListener('change', (e) => {
+        state.aiMode = e.target.value;
+        if (state.aiMode === 'coco') {
+          if (!cocoLoaded) {
+            addLog("TensorFlow Model is still loading. Retrying...", "warning", "SYS");
+            // Auto revert until fully functional
+            aiModeSelect.value = 'sim';
+          } else {
+            addLog("AI Detection switched to real-time neural network (COCO-SSD).", "success", "AI-CORE");
+          }
+        } else {
+          addLog("AI Detection returned to High-Fidelity Agriculture Simulation.", "info", "AI-CORE");
+        }
+      });
+
+      // High-Contrast Candling filter toggle button
+      btnCandlingFilter.addEventListener('click', () => {
+        state.candlingFilterActive = !state.candlingFilterActive;
+        if (state.candlingFilterActive) {
+          btnCandlingFilter.classList.remove('bg-slate-950', 'text-amber-500');
+          btnCandlingFilter.classList.add('bg-amber-500', 'text-slate-950', 'border-amber-400');
+          candlingIntensityBox.classList.remove('opacity-40', 'pointer-events-none');
+          candlingFlare.style.opacity = '1';
+          addLog("Active Optics shifted: Amber Candling Filter engaged. Embryo diagnostics activated.", "info", "OPTICS");
+        } else {
+          btnCandlingFilter.classList.add('bg-slate-950', 'text-amber-500');
+          btnCandlingFilter.classList.remove('bg-amber-500', 'text-slate-950', 'border-amber-400');
+          candlingIntensityBox.classList.add('opacity-40', 'pointer-events-none');
+          candlingFlare.style.opacity = '0';
+          addLog("Spectral candling filter disabled. Normal camera view restored.", "info", "OPTICS");
+        }
+      });
+
+      // Image processing sliders
+      optBacklight.addEventListener('input', (e) => {
+        state.candlingBacklight = parseInt(e.target.value);
+        valBacklight.textContent = `${state.candlingBacklight}%`;
+      });
+      optContrast.addEventListener('input', (e) => {
+        state.candlingContrast = parseFloat(e.target.value) / 10;
+        valContrast.textContent = `${state.candlingContrast.toFixed(1)}x`;
+      });
+
+      // Clear terminal button
+      btnClearLogs.addEventListener('click', () => {
+        diagnosticTerminal.innerHTML = '';
+        addLog("System Terminal buffer cleared.", "info", "SYS");
+      });
+
+      // Export report data to CSV
+      btnExportCsv.addEventListener('click', exportIncubationReportCSV);
+
+      // Drag and Click interactions inside the rendering Canvas
+      feedCanvas.addEventListener('mousedown', handleCanvasMouseDown);
+      feedCanvas.addEventListener('mousemove', handleCanvasMouseMove);
+      feedCanvas.addEventListener('mouseup', handleCanvasMouseUp);
+
+      // Touch events support for tablets and mobile
+      feedCanvas.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousedown', {
+          clientX: touch.clientX,
+          clientY: touch.clientY
+        });
+        feedCanvas.dispatchEvent(mouseEvent);
+      }, { passive: true });
+
+      feedCanvas.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
+        const mouseEvent = new MouseEvent('mousemove', {
+          clientX: touch.clientX,
+          clientY: touch.clientY
+        });
+        feedCanvas.dispatchEvent(mouseEvent);
+      }, { passive: true });
+
+      feedCanvas.addEventListener('touchend', () => {
+        const mouseEvent = new MouseEvent('mouseup', {});
+        feedCanvas.dispatchEvent(mouseEvent);
+      }, { passive: true });
+    }
+
+    // TensorFlow Loader Wrapper
+    async function initializeTensorflow() {
+      try {
+        cocoModel = await cocoSsd.load();
+        cocoLoaded = true;
+        tfLoader.classList.add('hidden');
+        addLog("TensorFlow.js and COCO-SSD Neural model loaded successfully.", "success", "AI-CORE");
+      } catch (err) {
+        console.error("TensorFlow initialization error:", err);
+        tfLoader.innerHTML = `
+          <div class="text-red-500 text-center p-4">
+            <i class="fa-solid fa-triangle-exclamation text-3xl mb-2"></i>
+            <p class="font-mono text-xs">Error loading TensorFlow engine. Fallback simulation remains operational.</p>
+          </div>`;
+      }
+    }
+
+    // Webcam Access Logic
+    async function startWebcam() {
+      try {
+        if (localStream) stopWebcam();
+
+        const constraints = {
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "environment" }
+        };
+        
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        webcamElem.srcObject = localStream;
+        webcamElem.classList.remove('hidden');
+        isWebcamRunning = true;
+        state.streamSource = 'webcam';
+        
+        feedTitle.textContent = "LIVE CAMERA FEED: WEBCAM / USB MICROSCOPE";
+        addLog("Connected to high-definition Web Camera/Microscope hardware.", "success", "SYS");
+      } catch (err) {
+        addLog(`Webcam access denied or unavailable. Falling back to digital simulation.`, "warning", "SYS");
+        state.streamSource = 'simulation';
+      }
+    }
+
+    function stopWebcam() {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+      }
+      webcamElem.srcObject = null;
+      webcamElem.classList.add('hidden');
+      isWebcamRunning = false;
+    }
+
+    // Dynamic Parameter Logic based on current Day Target Guidance
+    function updateIncubationParametersForDay(day) {
+      if (day >= DayTargetRanges.lockdown.start) {
+        // Lockdown parameters (Day 25 - 28)
+        state.targetTemperature = 37.2;
+        state.targetHumidity = 70.0;
+        
+        // Ensure humidity rises in the virtual UI to show target progression
+        state.currentHumidity = 69.5;
+        controlHum.value = 695;
+        humDisplay.textContent = `69.5 % RH`;
+        
+        // Inject hatching-specific alerts
+        if (day === 26) {
+          triggerDiagnosticAlert("Egg #004: Shell Pip detected! Embryo vocalization captured.", "warning");
+          eggsList[3].status = "hatching";
+          eggsList[3].confidence = 96.2;
+          eggsList[3].comments = "Active pipping on shell cap.";
+        } else if (day === 28) {
+          triggerDiagnosticAlert("Lockdown completed: Multiple ducklings successfully pipped!", "success");
+        }
+      } else {
+        // Standard Incubation parameters (Day 1 - 24)
+        state.targetTemperature = 37.6;
+        state.targetHumidity = 55.0;
+        
+        state.currentHumidity = 56.0;
+        controlHum.value = 560;
+        humDisplay.textContent = `56.0 % RH`;
+      }
+      
+      // Update ambient UI controls
+      state.currentTemperature = 37.6;
+      controlTemp.value = 376;
+      tempDisplay.textContent = `37.6 °C`;
+
+      addLog(`Incubation stage updated. Shifted target values for Day ${day}.`, "info", "TELEMETRY");
+      
+      checkTelemetryThresholds();
+      updateEggKPIs();
+      populateEggInventory();
+      updateChartsData();
+    }
+
+    // Quick sensor alarms check
+    function checkTelemetryThresholds() {
+      let activeAlerts = [];
+      
+      // Heat bounds check
+      if (state.currentTemperature < 37.0) {
+        activeAlerts.push("Warning: Critical low chamber temperature detected!");
+        state.systemRelays.heater = true;
+        state.systemRelays.fan = false;
+        state.systemRelays.overheatVent = false;
+      } else if (state.currentTemperature > 38.2) {
+        activeAlerts.push("Alert: Temperature safety ceiling breached! Forced air cooling engaged.");
+        state.systemRelays.heater = false;
+        state.systemRelays.fan = true;
+        state.systemRelays.overheatVent = true;
+      } else {
+        // Standard operations
+        state.systemRelays.heater = state.currentTemperature < state.targetTemperature;
+        state.systemRelays.fan = true;
+        state.systemRelays.overheatVent = false;
+      }
+
+      // Humidity bounds check
+      if (state.currentHumidity < 48.0 && state.selectedDay < 25) {
+        activeAlerts.push("Chamber humidity dropping beneath threshold.");
+      }
+
+      // Update safety valves display
+      if (state.systemRelays.heater) {
+        relayHeater.className = "w-2.5 h-2.5 rounded-full bg-orange-500 inline-block animate-pulse";
+      } else {
+        relayHeater.className = "w-2.5 h-2.5 rounded-full bg-slate-700 inline-block";
+      }
+
+      if (state.systemRelays.fan) {
+        relayFan.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-spin";
+      } else {
+        relayFan.className = "w-2.5 h-2.5 rounded-full bg-slate-700 inline-block";
+      }
+
+      if (state.systemRelays.overheatVent) {
+        ventAlarm.classList.remove('hidden');
+        ventAlarm.classList.add('flex');
+      } else {
+        ventAlarm.classList.add('hidden');
+        ventAlarm.classList.remove('flex');
+      }
+
+      // Write warning to terminal
+      activeAlerts.forEach(alertText => {
+        triggerDiagnosticAlert(alertText, "danger");
+      });
+
+      state.activeAlerts = activeAlerts;
+      updateEggKPIs();
+    }
+
+    // Write standard dynamic logs inside Terminal Feed
+    function addLog(text, type = "info", systemTag = "SYS") {
+      const row = document.createElement('div');
+      row.className = "pb-1 border-b border-slate-900 flex justify-between gap-2";
+      
+      let colorClass = "text-slate-300";
+      if (type === "success") colorClass = "text-emerald-400";
+      if (type === "warning") colorClass = "text-amber-400";
+      if (type === "danger") colorClass = "text-red-400 font-bold";
+
+      const timeStr = new Date().toLocaleTimeString();
+      row.innerHTML = `
+        <div>
+          <span class="text-slate-500 text-[10px]">[${timeStr}]</span>
+          <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-900 border border-slate-800 text-slate-400 tracking-wider">${systemTag}</span>
+          <span class="${colorClass} ml-1.5">${text}</span>
+        </div>
+      `;
+      diagnosticTerminal.appendChild(row);
+      diagnosticTerminal.scrollTop = diagnosticTerminal.scrollHeight;
+    }
+
+    // Standard alerts routing system with exponential log safeguard
+    function triggerDiagnosticAlert(msg, level) {
+      // Avoid excessive repeating identical terminal logs
+      const children = Array.from(diagnosticTerminal.children);
+      if (children.length > 0) {
+        const lastText = children[children.length - 1].innerText;
+        if (lastText.includes(msg)) return; // skip repeat
+      }
+      addLog(msg, level, "ALERT");
+    }
+
+    // Interactive clicking inside Canvas to define eggs
+    function handleCanvasMouseDown(e) {
+      const rect = feedCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      // Check if user clicked an existing egg to inspect or drag
+      let clickedEggIndex = -1;
+      eggsList.forEach((egg, idx) => {
+        // Simple bounding box hit test
+        if (clickX >= egg.x && clickX <= egg.x + egg.width &&
+            clickY >= egg.y && clickY <= egg.y + egg.height) {
+          clickedEggIndex = idx;
+        }
+      });
+
+      if (clickedEggIndex !== -1) {
+        // Drag configuration or select egg
+        state.selectedEggId = eggsList[clickedEggIndex].id;
+        dragTargetIndex = clickedEggIndex;
+        dragOffsetX = clickX - eggsList[clickedEggIndex].x;
+        dragOffsetY = clickY - eggsList[clickedEggIndex].y;
+        
+        updateInspectorPanel();
+        populateEggInventory();
+        addLog(`Selected Egg Target: #${eggsList[clickedEggIndex].id}`, "info", "AI-DET");
+      } else {
+        // Clicked in empty space -> Add new Egg placeholder at click location!
+        const newId = (eggsList.length + 1).toString().padStart(3, '0');
+        const defaultWidth = 85;
+        const defaultHeight = 110;
+        
+        // Random Status assigner for fun
+        const statuses = ["fertile", "fertile", "infertile", "dead-in-shell"];
+        const chosenStatus = statuses[Math.floor(Math.random() * statuses.length)];
+        const confidence = parseFloat((90 + Math.random() * 9).toFixed(1));
+        const bpm = chosenStatus === 'fertile' ? 140 + Math.floor(Math.random()*20) : 0;
+
+        const newEgg = {
+          id: newId,
+          x: Math.min(Math.max(clickX - defaultWidth/2, 10), canvasWidth - defaultWidth - 10),
+          y: Math.min(Math.max(clickY - defaultHeight/2, 10), canvasHeight - defaultHeight - 10),
+          width: defaultWidth,
+          height: defaultHeight,
+          status: chosenStatus,
+          confidence: confidence,
+          lastBPM: bpm,
+          lastMovement: chosenStatus === 'fertile' ? "Steady Pulse" : "None",
+          dayDetected: state.selectedDay,
+          comments: "Placed via interactive spatial monitor grid."
+        };
+
+        eggsList.push(newEgg);
+        state.selectedEggId = newId;
+        
+        addLog(`Dynamic egg placed: ID #${newId} Classified: ${chosenStatus.toUpperCase()}`, "success", "AI-CORE");
+        updateEggKPIs();
+        populateEggInventory();
+        updateInspectorPanel();
+        updateChartsData();
+      }
+    }
+
+    function handleCanvasMouseMove(e) {
+      if (dragTargetIndex !== -1) {
+        const rect = feedCanvas.getBoundingClientRect();
+        const cursorX = e.clientX - rect.left;
+        const cursorY = e.clientY - rect.top;
+
+        // Reposition egg dragging constraints inside bounds
+        const target = eggsList[dragTargetIndex];
+        target.x = Math.min(Math.max(cursorX - dragOffsetX, 5), canvasWidth - target.width - 5);
+        target.y = Math.min(Math.max(cursorY - dragOffsetY, 5), canvasHeight - target.height - 5);
+      }
+    }
+
+    function handleCanvasMouseUp() {
+      dragTargetIndex = -1;
+    }
+
+    // Refresh KPIs Summaries on screen
+    function updateEggKPIs() {
+      kpiTotalEggs.textContent = eggsList.length;
+      
+      const fertileCount = eggsList.filter(e => e.status === 'fertile' || e.status === 'hatching').length;
+      const rate = eggsList.length > 0 ? (fertileCount / eggsList.length) * 100 : 0;
+      kpiFertilityRate.textContent = `${rate.toFixed(1)}%`;
+
+      const hatchingCount = eggsList.filter(e => e.status === 'hatching').length;
+      const hatchRate = eggsList.length > 0 ? (hatchingCount / eggsList.length) * 100 : 0;
+      kpiHatchingProgress.textContent = `${hatchRate.toFixed(1)}%`;
+
+      kpiAlertsCount.textContent = state.activeAlerts.length;
+      if (state.activeAlerts.length > 0) {
+        kpiWarningBox.className = "p-3 bg-red-500/25 border border-red-500/40 text-red-400 rounded-lg text-lg animate-pulse";
+      } else {
+        kpiWarningBox.className = "p-3 bg-slate-800 border border-slate-700 text-slate-400 rounded-lg text-lg";
+      }
+    }
+
+    // Dynamic Generation of Egg Inventory Panel Rows
+    function populateEggInventory() {
+      eggInventoryList.innerHTML = '';
+      inventoryCount.textContent = eggsList.length;
+
+      eggsList.forEach(egg => {
+        const row = document.createElement('div');
+        const isSelected = egg.id === state.selectedEggId;
+        
+        let statusBadge = '';
+        if (egg.status === 'fertile') {
+          statusBadge = `<span class="bg-emerald-950/60 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded text-[10px] font-mono">FERTILE</span>`;
+        } else if (egg.status === 'infertile') {
+          statusBadge = `<span class="bg-yellow-950/60 text-yellow-400 border border-yellow-800 px-2 py-0.5 rounded text-[10px] font-mono">INFERTILE</span>`;
+        } else if (egg.status === 'hatching') {
+          statusBadge = `<span class="bg-blue-950/60 text-blue-400 border border-blue-800 px-2 py-0.5 rounded text-[10px] font-mono animate-pulse">HATCHING</span>`;
+        } else if (egg.status === 'dead-in-shell') {
+          statusBadge = `<span class="bg-red-950/60 text-red-400 border border-red-800 px-2 py-0.5 rounded text-[10px] font-mono">DEAD-IN-SHELL</span>`;
+        }
+
+        row.className = `p-3 rounded-xl border transition cursor-pointer flex items-center justify-between gap-3 ${
+          isSelected 
+            ? 'bg-amber-500/10 border-amber-500/80 shadow-md shadow-amber-500/5' 
+            : 'bg-slate-950/60 border-slate-800/80 hover:bg-slate-900 hover:border-slate-700'
+        }`;
+
+        row.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="text-xs font-mono font-bold text-slate-400">#${egg.id}</span>
+            <div>
+              <p class="text-xs font-bold text-slate-200">Confidence: ${egg.confidence}%</p>
+              <p class="text-[10px] text-slate-400 font-mono">Heart: ${egg.lastBPM > 0 ? `${egg.lastBPM} BPM` : 'No Signal'}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            ${statusBadge}
+            <button onclick="event.stopPropagation(); deleteEgg('${egg.id}')" class="text-slate-500 hover:text-red-400 p-1.5 rounded transition text-xs">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        `;
+
+        row.addEventListener('click', () => {
+          state.selectedEggId = egg.id;
+          updateInspectorPanel();
+          populateEggInventory();
+        });
+
+        eggInventoryList.appendChild(row);
+      });
+    }
+
+    // Delete egg safely from state
+    function deleteEgg(id) {
+      eggsList = eggsList.filter(egg => egg.id !== id);
+      if (state.selectedEggId === id) state.selectedEggId = null;
+      addLog(`Removed monitoring coordinates for Egg #${id}`, "info", "SYS");
+      updateEggKPIs();
+      populateEggInventory();
+      updateInspectorPanel();
+      updateChartsData();
+    }
+
+    // Interactive Inspector Panel detail cards rendering
+    function updateInspectorPanel() {
+      if (!state.selectedEggId) {
+        selectedEggBadge.textContent = "No Egg Selected";
+        inspectorContent.innerHTML = `
+          <p class="text-xs text-slate-400 font-mono text-center py-6">Select an egg on the live monitor canvas or from the inventory list below to review full diagnostic analysis and biological telemetry.</p>
+        `;
+        return;
+      }
+
+      const egg = eggsList.find(e => e.id === state.selectedEggId);
+      if (!egg) {
+        state.selectedEggId = null;
+        updateInspectorPanel();
+        return;
+      }
+
+      selectedEggBadge.textContent = `EGG #${egg.id}`;
+
+      let heartSignalGlow = "text-slate-500";
+      let heartRateLabel = "0 BPM (No Pulse)";
+      if (egg.lastBPM > 0) {
+        heartSignalGlow = "text-red-500 animate-pulse";
+        heartRateLabel = `${egg.lastBPM} BPM (Pulsating Embryonic Node)`;
+      }
+
+      // Generate the internal markup inside inspector module
+      inspectorContent.innerHTML = `
+        <div class="space-y-4">
+          <!-- Egg Status Selection controls -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Class Label</label>
+              <select id="edit-egg-status" class="w-full bg-slate-950 border border-slate-800 text-xs py-1.5 px-2 rounded font-mono text-slate-200 mt-1 focus:outline-none focus:border-amber-500">
+                <option value="fertile" ${egg.status === 'fertile' ? 'selected' : ''}>Fertile (Active)</option>
+                <option value="infertile" ${egg.status === 'infertile' ? 'selected' : ''}>Infertile (Void)</option>
+                <option value="hatching" ${egg.status === 'hatching' ? 'selected' : ''}>Hatching (Pip)</option>
+                <option value="dead-in-shell" ${egg.status === 'dead-in-shell' ? 'selected' : ''}>Dead In Shell</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Vitals Signal</label>
+              <div class="flex items-center gap-2 mt-2 bg-slate-950 px-2 py-1.5 rounded border border-slate-800 text-xs">
+                <i class="fa-solid fa-heart-pulse ${heartSignalGlow}"></i>
+                <span class="font-mono font-bold text-slate-300 text-[10px] truncate">${heartRateLabel}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Slider calibration for confidence and metadata -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-mono uppercase text-slate-400">Confidence Score (%)</label>
+              <input type="number" id="edit-egg-conf" min="50" max="100" step="0.1" value="${egg.confidence}" class="w-full bg-slate-950 border border-slate-800 text-xs py-1.5 px-2 rounded font-mono text-slate-200 mt-1 focus:outline-none focus:border-amber-500">
+            </div>
+            <div>
+              <label class="text-[10px] font-mono uppercase text-slate-400">Simulate Pipper Heartbeat</label>
+              <div class="flex gap-1.5 mt-1">
+                <button id="btn-pulse-up" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs flex-1 py-1 rounded transition font-mono">+ BPM</button>
+                <button id="btn-pulse-kill" class="bg-red-950/40 hover:bg-red-950 text-red-400 border border-red-900/60 text-xs flex-1 py-1 rounded transition font-mono">Mute</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Text Comments -->
+          <div>
+            <label class="text-[10px] font-mono uppercase tracking-wider text-slate-400">Bio Diagnostics Log</label>
+            <textarea id="edit-egg-comments" rows="2" class="w-full bg-slate-950 border border-slate-800 text-xs p-2 rounded font-mono text-slate-200 mt-1 focus:outline-none focus:border-amber-500 resize-none">${egg.comments}</textarea>
+          </div>
+
+          <!-- Shell crack simulation button for Hatching Demonstration -->
+          <div class="flex gap-2">
+            <button id="btn-trigger-pip" class="flex-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 text-xs py-2 px-3 rounded-lg font-mono font-bold transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-shatter"></i> Force Shell Pip (Crack)
+            </button>
+            <button id="btn-hatch-now" class="flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-xs py-2 px-3 rounded-lg font-mono font-bold transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-kiwi-bird animate-bounce"></i> Simulate Hatching
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Apply quick dynamic listeners inside inspector fields
+      document.getElementById('edit-egg-status').addEventListener('change', (e) => {
+        egg.status = e.target.value;
+        if (egg.status === 'fertile') {
+          egg.lastBPM = 142;
+          egg.lastMovement = "Steady Pulse";
+        } else if (egg.status === 'hatching') {
+          egg.lastBPM = 155;
+          egg.lastMovement = "Active Pip Crack";
+        } else {
+          egg.lastBPM = 0;
+          egg.lastMovement = "None";
+        }
+        updateEggKPIs();
+        populateEggInventory();
+        updateInspectorPanel();
+        updateChartsData();
+      });
+
+      document.getElementById('edit-egg-conf').addEventListener('change', (e) => {
+        egg.confidence = parseFloat(e.target.value);
+        populateEggInventory();
+      });
+
+      document.getElementById('edit-egg-comments').addEventListener('input', (e) => {
+        egg.comments = e.target.value;
+      });
+
+      document.getElementById('btn-pulse-up').addEventListener('click', () => {
+        egg.lastBPM = egg.lastBPM > 0 ? egg.lastBPM + 5 : 120;
+        updateInspectorPanel();
+      });
+
+      document.getElementById('btn-pulse-kill').addEventListener('click', () => {
+        egg.lastBPM = 0;
+        updateInspectorPanel();
+      });
+
+      document.getElementById('btn-trigger-pip').addEventListener('click', () => {
+        egg.status = "hatching";
+        egg.lastBPM = 158;
+        egg.comments = "Egg structure compromised. Active hatching star-crack developing.";
+        addLog(`Force pip initiated on Egg #${egg.id}`, "warning", "AI-CORE");
+        updateEggKPIs();
+        populateEggInventory();
+        updateInspectorPanel();
+        updateChartsData();
+      });
+
+      document.getElementById('btn-hatch-now').addEventListener('click', () => {
+        addLog(`Egg #${egg.id} successfully hatched into a healthy Duckling!`, "success", "SYS");
+        deleteEgg(egg.id);
+      });
+    }
+
+    // Graphical canvas telemetry rendering loop (60 FPS context redraw)
+    async function runSystemRenderLoop(now) {
+      try {
+        // Track frame times to calculate actual client FPS
+        while (frameTimes.length > 0 && frameTimes[0] <= now - 1000) {
+          frameTimes.shift();
+        }
+        frameTimes.push(now);
+        fpsCounter.textContent = `FPS: ${frameTimes.length}`;
+
+        // Redraw canvas with primary camera stream or simulated graphic space
+        ctx.fillStyle = "#020617";
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+        if (state.streamSource === 'webcam' && isWebcamRunning) {
+          // Render raw webcam frames
+          ctx.drawImage(webcamElem, 0, 0, canvasWidth, canvasHeight);
+        } else {
+          // Render Synthetic visual digital incubator chamber background
+          drawSyntheticIncubatorBackground(ctx);
+        }
+
+        // Apply visual Candling filter pixel matrices if engaged
+        if (state.candlingFilterActive) {
+          drawCandlingBacklightMask(ctx);
+        }
+
+        // TensorFlow real-time bounding box vs Simulated Custom SVG overlay
+        if (state.aiMode === 'coco' && cocoLoaded) {
+          await runTensorflowDetection();
+        } else {
+          // Draw standard overlay tracker blocks
+          drawEggTrackingSlices(ctx);
+        }
+
+      } catch (err) {
+        console.error("Graphics render cycle crash:", err);
+      }
+      
+      requestAnimationFrame(runSystemRenderLoop);
+    }
+
+    // High Fidelity Digital Chamber Background renderer (when no hardware webcams are connected)
+    function drawSyntheticIncubatorBackground(ctx) {
+      // Draw grid matrix
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.4)";
+      ctx.lineWidth = 1.5;
+      const step = 40;
+      for (let i = 0; i < canvasWidth; i += step) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvasHeight);
+        ctx.stroke();
+      }
+      for (let j = 0; j < canvasHeight; j += step) {
+        ctx.beginPath();
+        ctx.moveTo(0, j);
+        ctx.lineTo(canvasWidth, j);
+        ctx.stroke();
+      }
+
+      // Metallic frame of incubator tray
+      ctx.fillStyle = "rgba(10, 15, 30, 0.8)";
+      ctx.fillRect(15, 15, canvasWidth - 30, canvasHeight - 30);
+      ctx.strokeStyle = "rgba(51, 65, 85, 0.4)";
+      ctx.strokeRect(15, 15, canvasWidth - 30, canvasHeight - 30);
+
+      // Render Rotating Ventilator Fans
+      fanAngle += 0.08;
+      drawRotatingFan(ctx, 45, 45, 18, fanAngle);
+      drawRotatingFan(ctx, canvasWidth - 45, 45, 18, fanAngle);
+
+      // Render Amber Golden Heating waves flowing across the screen representing temperature
+      heatWavesPhase += 0.02;
+      ctx.strokeStyle = "rgba(245, 158, 11, 0.06)";
+      ctx.lineWidth = 2.5;
+      for (let offset = 0; offset < canvasHeight; offset += 60) {
+        ctx.beginPath();
+        for (let x = 20; x < canvasWidth - 20; x += 10) {
+          const y = offset + Math.sin(x * 0.015 + heatWavesPhase) * 8;
+          if (x === 20) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      // Draw metallic incubator rails
+      ctx.fillStyle = "rgba(148, 163, 184, 0.06)";
+      for (let y = 100; y < canvasHeight - 80; y += 120) {
+        ctx.fillRect(20, y, canvasWidth - 40, 16);
+      }
+    }
+
+    function drawRotatingFan(ctx, x, y, radius, angle) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      
+      // Fan core circle
+      ctx.fillStyle = "#1e293b";
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#475569";
+      ctx.stroke();
+
+      // Blades
+      ctx.fillStyle = "#475569";
+      for (let i = 0; i < 4; i++) {
+        ctx.rotate(Math.PI / 2);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(-radius/2, -radius, 0, -radius);
+        ctx.quadraticCurveTo(radius/2, -radius, 0, 0);
+        ctx.fill();
+      }
+
+      // Central rivet
+      ctx.fillStyle = "#94a6b8";
+      ctx.beginPath();
+      ctx.arc(0, 0, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Visual Candling spectral filter backlight mask and edge bloom
+    function drawCandlingBacklightMask(ctx) {
+      const gradient = ctx.createRadialGradient(
+        canvasWidth / 2, canvasHeight / 2, 50,
+        canvasWidth / 2, canvasHeight / 2, canvasWidth / 1.5
+      );
+      
+      // Dynamic opacity mapping with contrast/backlight slider settings
+      const multiplier = state.candlingBacklight / 100;
+      gradient.addColorStop(0, `rgba(251, 146, 60, ${0.45 * multiplier})`); // Amber
+      gradient.addColorStop(0.3, `rgba(234, 88, 12, ${0.1 * multiplier})`); // Darker Orange
+      gradient.addColorStop(0.7, 'rgba(8, 2, 0, 0.92)'); // Complete Shadow mask
+      gradient.addColorStop(1, 'rgba(3, 1, 0, 0.98)');
+      
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    }
+
+    // TensorFlow runtime COCO-SSD detection
+    async function runTensorflowDetection() {
+      try {
+        const predictions = await cocoModel.detect(webcamElem);
+        predictions.forEach(prediction => {
+          // Filter common circular object boxes to represent them as eggs
+          const roundClasses = ['sports ball', 'cup', 'apple', 'orange', 'bowl'];
+          if (roundClasses.includes(prediction.class) || prediction.class === 'egg') {
+            const [x, y, width, height] = prediction.bbox;
+            
+            // Draw real neural net output box
+            ctx.strokeStyle = "#06b6d4"; // Cyan box
+            ctx.lineWidth = 2.5;
+            ctx.strokeRect(x, y, width, height);
+
+            // Bounding label
+            ctx.fillStyle = "rgba(6, 182, 212, 0.85)";
+            ctx.font = "bold 10px monospace";
+            ctx.fillText(`NEURAL EGG [${prediction.class}] ${Math.round(prediction.score * 100)}%`, x + 4, y - 6);
+          }
+        });
+      } catch (err) {
+        // Prevent crashing thread
+      }
+    }
+
+    // Primary High Fidelity diagnostic visualizer overlay of Eggs and internal anatomy
+    function drawEggTrackingSlices(ctx) {
+      eggsList.forEach(egg => {
+        const isSelected = egg.id === state.selectedEggId;
+        
+        // Define color indicators based on diagnostic state
+        let colorTheme = "#10b981"; // Emerald Fertile
+        if (egg.status === 'infertile') colorTheme = "#eab308"; // Yellow Void
+        if (egg.status === 'hatching') colorTheme = "#3b82f6"; // Blue Hatching
+        if (egg.status === 'dead-in-shell') colorTheme = "#ef4444"; // Red Dead
+
+        // Draw egg biology internal structure (blood vessel networks / embryo shadow)
+        if (state.candlingFilterActive) {
+          drawEggBiologyFibrils(ctx, egg, colorTheme);
+        } else {
+          // Normal Camera Mode: draw smooth translucent egg shell shapes
+          ctx.save();
+          ctx.beginPath();
+          ctx.ellipse(egg.x + egg.width/2, egg.y + egg.height/2, egg.width/2, egg.height/2, 0, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(241, 245, 249, 0.25)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(251, 146, 60, 0.35)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Target box indicators (High tech Sci-fi corner brackets)
+        ctx.strokeStyle = isSelected ? "#f59e0b" : colorTheme;
+        ctx.lineWidth = isSelected ? 3.0 : 1.5;
+        
+        const pad = 6;
+        const x = egg.x - pad;
+        const y = egg.y - pad;
+        const w = egg.width + pad * 2;
+        const h = egg.height + pad * 2;
+        const len = 14;
+
+        // Top-Left corner bracket
+        ctx.beginPath(); ctx.moveTo(x + len, y); ctx.lineTo(x, y); ctx.lineTo(x, y + len); ctx.stroke();
+        // Top-Right corner bracket
+        ctx.beginPath(); ctx.moveTo(x + w - len, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + len); ctx.stroke();
+        // Bottom-Left corner bracket
+        ctx.beginPath(); ctx.moveTo(x + len, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - len); ctx.stroke();
+        // Bottom-Right corner bracket
+        ctx.beginPath(); ctx.moveTo(x + w - len, y + h); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w, y + h - len); ctx.stroke();
+
+        // High contrast ID labels
+        ctx.fillStyle = isSelected ? "rgba(245, 158, 11, 0.95)" : "rgba(15, 23, 42, 0.85)";
+        ctx.fillRect(x + 4, y - 18, 90, 16);
+        ctx.strokeStyle = isSelected ? "#ffffff" : colorTheme;
+        ctx.strokeRect(x + 4, y - 18, 90, 16);
+
+        ctx.fillStyle = isSelected ? "#000000" : "#ffffff";
+        ctx.font = "bold 9px monospace";
+        ctx.fillText(`EGG #${egg.id} [${egg.status.toUpperCase()}]`, x + 8, y - 7);
+
+        // Highlight floating metadata when selected
+        if (isSelected) {
+          ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+          ctx.fillRect(x + w + 4, y, 110, 55);
+          ctx.strokeStyle = "#f59e0b";
+          ctx.strokeRect(x + w + 4, y, 110, 55);
+
+          ctx.fillStyle = "#94a6b8";
+          ctx.font = "9px monospace";
+          ctx.fillText(`CONF: ${egg.confidence}%`, x + w + 10, y + 14);
+          ctx.fillText(`VIBE: ${egg.lastBPM > 0 ? `${egg.lastBPM} BPM` : 'MUTE'}`, x + w + 10, y + 26);
+          ctx.fillText(`STATE: ${egg.lastMovement}`, x + w + 10, y + 38);
+          ctx.fillStyle = "#f59e0b";
+          ctx.fillText(`ACTIVE MONITOR`, x + w + 10, y + 48);
+        }
+      });
+    }
+
+    // Draw realistic internal anatomy inside the eggs based on candling filter optics
+    function drawEggBiologyFibrils(ctx, egg, themeColor) {
+      ctx.save();
+      
+      // Create a clipping ellipse boundary path so biology stays strictly inside the egg shell
+      ctx.beginPath();
+      ctx.ellipse(egg.x + egg.width/2, egg.y + egg.height/2, egg.width/2, egg.height/2, 0, 0, Math.PI * 2);
+      ctx.clip();
+
+      // Backlight egg base amber fill
+      const radialGrad = ctx.createRadialGradient(
+        egg.x + egg.width/2, egg.y + egg.height/2, 5,
+        egg.x + egg.width/2, egg.y + egg.height/2, egg.width/1.2
+      );
+      
+      // Make filter color reactive to backlight intensity
+      const amp = state.candlingBacklight / 100;
+      radialGrad.addColorStop(0, `rgba(254, 215, 170, ${1.0 * amp})`); // Bright white-gold center
+      radialGrad.addColorStop(0.4, `rgba(249, 115, 22, ${0.85 * amp})`); // Deep orange middle
+      radialGrad.addColorStop(0.9, `rgba(127, 29, 29, ${0.95 * amp})`);  // Deep maroon edges
+
+      ctx.fillStyle = radialGrad;
+      ctx.fill();
+
+      // Draw biology specifics based on status
+      const cX = egg.x + egg.width/2;
+      const cY = egg.y + egg.height/2;
+
+      if (egg.status === 'fertile') {
+        // Draw active pulsating vascular network
+        const pulse = Math.sin(Date.now() * 0.005) * 2;
+        
+        // 1. Core Embryo shadow yolk disc
+        ctx.fillStyle = "rgba(69, 10, 10, 0.75)";
+        ctx.beginPath();
+        ctx.arc(cX - 5, cY + 5, 14 + pulse, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2. Translucent red pulsing heartbeat spot
+        ctx.fillStyle = "rgba(220, 38, 38, 0.95)";
+        ctx.beginPath();
+        ctx.arc(cX - 8, cY + 8, 4 + Math.abs(pulse), 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3. Blood Vessel Capillary network webbing
+        ctx.strokeStyle = "rgba(185, 28, 28, 0.75)";
+        ctx.lineWidth = 1.8;
+        
+        const vesselAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+        vesselAngles.forEach(angle => {
+          const rad = (angle * Math.PI) / 180;
+          ctx.beginPath();
+          ctx.moveTo(cX - 5, cY + 5);
+          
+          // Generate realistic branch nodes
+          const midX = cX - 5 + Math.cos(rad) * 20;
+          const midY = cY + 5 + Math.sin(rad) * 20;
+          ctx.quadraticCurveTo(
+            midX + Math.sin(midY) * 4, 
+            midY + Math.cos(midX) * 4,
+            cX - 5 + Math.cos(rad) * (egg.width/2.2), 
+            cY + 5 + Math.sin(rad) * (egg.height/2.2)
+          );
+          ctx.stroke();
+
+          // Sub-branches
+          ctx.save();
+          ctx.strokeStyle = "rgba(185, 28, 28, 0.45)";
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(midX, midY);
+          ctx.lineTo(midX + Math.cos(rad + 0.5) * 15, midY + Math.sin(rad + 0.5) * 15);
+          ctx.moveTo(midX, midY);
+          ctx.lineTo(midX + Math.cos(rad - 0.5) * 15, midY + Math.sin(rad - 0.5) * 15);
+          ctx.stroke();
+          ctx.restore();
+        });
+      } 
+      else if (egg.status === 'infertile') {
+        // Draw void empty yolk drifting shadow with no vessels
+        ctx.fillStyle = "rgba(154, 52, 18, 0.4)";
+        ctx.beginPath();
+        ctx.arc(cX + 8, cY - 12, 18, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.strokeStyle = "rgba(249, 115, 22, 0.25)";
+        ctx.lineWidth = 1.0;
+        ctx.stroke();
+      } 
+      else if (egg.status === 'dead-in-shell') {
+        // Dead embryo: Draw a disconnected stagnant blood ring and dark shapeless clump
+        ctx.fillStyle = "rgba(24, 24, 37, 0.82)";
+        ctx.beginPath();
+        ctx.arc(cX + 3, cY + 8, 22, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Stagnant dead ring
+        ctx.strokeStyle = "rgba(153, 27, 27, 0.85)";
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.arc(cX, cY, egg.width/2.5, 0, Math.PI * 2);
+        ctx.stroke();
+      } 
+      else if (egg.status === 'hatching') {
+        // Hatching: Egg interior is fully dark, shadows dominate except at air cell
+        ctx.fillStyle = "rgba(12, 12, 16, 0.95)";
+        ctx.beginPath();
+        // Cover bottom 80% with shadow
+        ctx.arc(cX, cY + 15, egg.width/1.6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw Air cell line separator at top boundary
+        ctx.strokeStyle = "rgba(254, 215, 170, 0.6)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cX, cY - egg.height/2.2, egg.width/1.5, 0, Math.PI);
+        ctx.stroke();
+
+        // Draw physical fracture crack lines on eggshell!
+        ctx.strokeStyle = "rgba(2, 6, 23, 0.95)";
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.moveTo(cX - 12, cY - 4);
+        ctx.lineTo(cX, cY + 4);
+        ctx.lineTo(cX + 10, cY - 8);
+        ctx.lineTo(cX + 22, cY + 2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    // Chart.js Setup & Configurations
+    function initializeCharts() {
+      // 1. Incubation Environmental Target Line Chart (28 Days)
+      const lineCtx = document.getElementById('incubation-line-chart').getContext('2d');
+      
+      // Build 28 days label indices
+      const labels = Array.from({ length: 28 }, (_, i) => `D${i + 1}`);
+      
+      // Create mock history timeline
+      const tempHistoryData = Array.from({ length: 28 }, (_, i) => {
+        if (i < 24) return (37.5 + Math.random() * 0.3).toFixed(2);
+        return (37.1 + Math.random() * 0.3).toFixed(2);
+      });
+      const humHistoryData = Array.from({ length: 28 }, (_, i) => {
+        if (i < 24) return (53 + Math.random() * 4).toFixed(1);
+        return (67 + Math.random() * 4).toFixed(1);
+      });
+
+      incubationLineChart = new Chart(lineCtx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Ambient Temp (°C)',
+              data: tempHistoryData,
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.08)',
+              borderWidth: 2,
+              tension: 0.3,
+              yAxisID: 'yTemp'
+            },
+            {
+              label: 'Chamber Humidity (%)',
+              data: humHistoryData,
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.08)',
+              borderWidth: 2,
+              tension: 0.3,
+              yAxisID: 'yHum'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#94a6b8', font: { size: 10, family: 'monospace' } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(51, 65, 85, 0.15)' },
+              ticks: { color: '#64748b', font: { size: 9, family: 'monospace' } }
+            },
+            yTemp: {
+              type: 'linear',
+              position: 'left',
+              min: 34.0,
+              max: 41.0,
+              grid: { color: 'rgba(51, 65, 85, 0.15)' },
+              ticks: { color: '#f59e0b', font: { size: 9, family: 'monospace' } }
+            },
+            yHum: {
+              type: 'linear',
+              position: 'right',
+              min: 30,
+              max: 90,
+              grid: { drawOnChartArea: false },
+              ticks: { color: '#3b82f6', font: { size: 9, family: 'monospace' } }
+            }
+          }
+        }
+      });
+
+      // 2. Egg Status Pie Chart
+      const pieCtx = document.getElementById('egg-status-pie-chart').getContext('2d');
+      eggStatusPieChart = new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Fertile', 'Infertile', 'Hatching', 'Dead-In-Shell'],
+          datasets: [{
+            data: [2, 1, 1, 1],
+            backgroundColor: ['#10b981', '#eab308', '#3b82f6', '#ef4444'],
+            borderColor: '#0f172a',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { color: '#94a6b8', font: { size: 9, family: 'monospace' } }
+            }
+          }
+        }
+      });
+    }
+
+    // Refresh chart series based on interactive updates
+    function updateChartsData() {
+      if (!incubationLineChart || !eggStatusPieChart) return;
+
+      // Calculate Egg class distribution aggregates
+      const counts = { fertile: 0, infertile: 0, hatching: 0, 'dead-in-shell': 0 };
+      eggsList.forEach(egg => {
+        counts[egg.status] = (counts[egg.status] || 0) + 1;
+      });
+
+      eggStatusPieChart.data.datasets[0].data = [
+        counts.fertile, 
+        counts.infertile, 
+        counts.hatching, 
+        counts['dead-in-shell']
+      ];
+      eggStatusPieChart.update();
+    }
+
+    // Move vertical slider highlight indicator on Line Chart
+    function updateLineChartSelection() {
+      // Modify point radius on charts to highlight active day
+      const targetIndex = state.selectedDay - 1;
+      incubationLineChart.update();
+    }
+
+    // Export Current Egg Monitoring Status to CSV
+    function exportIncubationReportCSV() {
+      try {
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Egg ID,Status,Confidence (%),Heart Rate (BPM),Vibration Activity,Day Detected,Diagnostics Notes\r\n";
+        
+        eggsList.forEach(egg => {
+          const row = [
+            `"${egg.id}"`,
+            `"${egg.status}"`,
+            `"${egg.confidence}"`,
+            `"${egg.lastBPM}"`,
+            `"${egg.lastMovement}"`,
+            `"${egg.dayDetected}"`,
+            `"${egg.comments.replace(/"/g, '""')}"`
+          ].join(",");
+          csvContent += row + "\r\n";
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `duck_incubation_ai_report_day_${state.selectedDay}.csv`);
+        document.body.appendChild(link);
+        
+        link.click();
+        document.body.removeChild(link);
+        addLog("Incubation CSV Report downloaded.", "success", "SYS");
+      } catch (err) {
+        addLog("Export failed. Browser constraints blocked operation.", "danger", "SYS");
+      }
+    }
+  </script>
+</body>
+</html>
